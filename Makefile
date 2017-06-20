@@ -1,11 +1,11 @@
 SDL2CONFIG=/Users/huang41/np/SDL2/bin/sdl2-config
 
-npc:	nanopond-2.c
-	gcc nanopond-2.c -o np 				\
+npc:	original_source.c
+	gcc original_source.c -o np 				\
 		-Wall					
 
-np:	nanopond-2.c
-	gcc nanopond-2.c -o np 				\
+np:	original_source.c
+	gcc original_source.c -o np 				\
 		-Wall					\
 		-DUSE_SDL `${SDL2CONFIG} --cflags --libs` 	
 

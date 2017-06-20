@@ -592,7 +592,6 @@ static void doDump(const uint64_t clock)
 				wordPtr = 0;
 				shiftPtr = 0;
 				stopCount = 0;
-                printf("instructions: ");
 				for(i=0;i<POND_DEPTH;++i) {
 					inst = (pptr->genome[wordPtr] >> shiftPtr) & 0xf;
 					/* Four STOP instructions in a row is considered the end.
@@ -920,11 +919,9 @@ int main(int argc,char **argv)
 	/* Main loop */
 	for(;;) {
 
-
+ 
+#ifdef STOP_AFTER
 		if (time(NULL) - start_time >= STOP_AFTER) {		/* Stop at STOP_AFTER seconds if defined */
-#ifdef DUMP_FREQUENCY
-			doDump(clock);		/* Also do a final dump if dumps are enabled */
-#endif /* DUMP_FREQUENCY */
 			fprintf(stderr,"[QUIT] STOP_AFTER value of %d seconds reached\n", STOP_AFTER);
 			break;
 		}
