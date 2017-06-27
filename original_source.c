@@ -42,7 +42,7 @@
  * 1.5 - Made some other instruction changes such as XCHG and added a
  *       penalty for failed KILL attempts. Also made access permissions
  *       stochastic.
- * 1.6 - Made cells all start facing in direction 0. This removes a bit
+ * 1.6 - Made cells all start cell_direction in direction 0. This removes a bit
  *       of artificiality and requires cells to evolve the ability to
  *       turn in various directions in order to reproduce in anything but
  *       a straight line. It also makes pretty graphics.
@@ -109,8 +109,8 @@
  *   executed until a STOP instruction is encountered or the cell's
  *   energy counter reaches zero. (Each instruction costs one unit energy.)
  *
- * The cell virtual machine is an extremely simple register machine with
- * a single four bit register, one memory pointer, one spare memory pointer
+ * The cell virtual machine is an extremely simple cell_register machine with
+ * a single four bit cell_register, one memory pointer, one spare memory pointer
  * that can be exchanged with the main one, and an output buffer. When
  * cell execution starts, this output buffer is filled with all binary 1's
  * (0xffff....). When cell execution is finished, if the first byte of
@@ -134,7 +134,7 @@
  * Since randomly introduced cells have a parentID of zero, this allows
  * real living cells to always replace them or eat them.
  *
- * The "guess" is merely the value of the register at the time that the
+ * The "guess" is merely the value of the cell_register at the time that the
  * access attempt occurs.
  *
  * Permissions determine whether or not an offspring can take the place
@@ -902,16 +902,16 @@ int main(int argc,char **argv)
 	uintptr_t currentWord,wordPtr,shiftPtr,inst,tmp;/* Miscellaneous variables */
 	struct Cell *currCell,*neighborCell;			/* used in the loop */
   
-	uintptr_t ptr_wordPtr;	/* Virtual machine memory pointer register (which */
-	uintptr_t ptr_shiftPtr; /* exists in two parts... read the code below...) */
+	uintptr_t cell_wordPtr;	/* Virtual machine memory pointer cell_register (which */
+	uintptr_t cell_shiftPtr; /* exists in two parts... read the code below...) */
 	  
-	uintptr_t reg;			/* The main "register" */
-	uintptr_t facing;		/* Which way is the cell facing? */
+	uintptr_t cell_register;			/* The main "cell_register" */
+	uintptr_t cell_direction;		/* Which way is the cell cell_direction? */
   
   
 	uintptr_t loopStack_wordPtr[MAX_NUM_INSTR];	/*				  */
 	uintptr_t loopStack_shiftPtr[MAX_NUM_INSTR];	/* Virtual machine loop/rep stack */
-	uintptr_t loopStackPtr;				/* 				  */
+	uintptr_t whichLoop;				/* 				  */
   
 	uintptr_t falseLoopDepth; 		/* If this is nonzero, we're skipping to matching REP */
   						/* It is incremented to track the depth of a nested set
@@ -1017,13 +1017,13 @@ int main(int argc,char **argv)
 		/* Reset the state of the VM prior to execution */
 		for(i=0;i<MAX_WORDS_GENOME;++i)
 			outputBuf[i] = ~((uintptr_t)0); /* ~0 == 0xfffff... */
-		ptr_wordPtr = 0;
-		ptr_shiftPtr = 0;
-		reg = 0;
-		loopStackPtr = 0;
+		cell_wordPtr = 0;
+		cell_shiftPtr = 0;
+		cell_register = 0;
+		whichLoop = 0;
 		wordPtr = EXEC_START_WORD;
 		shiftPtr = EXEC_START_BIT;
-		facing = 0;
+		cell_direction = 0;
 		falseLoopDepth = 0;
 		stop = 0;
 
@@ -1043,7 +1043,7 @@ int main(int argc,char **argv)
 			/* Get the next instruction */
 			inst = (currentWord >> shiftPtr) & 0xf;
       
-			/* Randomly frob either the instruction or the register with a
+			/* Randomly frob either the instruction or the cell_register with a
 			* probability defined by MUTATION_RATE. This introduces variation,
 			* and since the variation is introduced into the state of the VM
 			* it can have all manner of different effects on the end result of
@@ -1054,7 +1054,7 @@ int main(int argc,char **argv)
 				if (tmp & 0x80) /* Check for the 8th bit to get random boolean */
 					inst = tmp & 0xf; /* Only the first four bits are used here */
 				else 
-					reg = tmp & 0xf;
+					cell_register = tmp & 0xf;
 			}
       
 			/* Each instruction processed costs one unit of energy */
@@ -1075,93 +1075,93 @@ int main(int argc,char **argv)
 				statCounters.instructionExecutions[inst] += 1.0;
         
 				switch(inst) {
-					case 0x0: /* ZERO: Zero VM state registers */
-						reg = 0;
-						ptr_wordPtr = 0;
-						ptr_shiftPtr = 0;
-						facing = 0;
+					case 0x0: /* ZERO: Zero VM state cell_registers */
+						cell_register = 0;
+						cell_wordPtr = 0;
+						cell_shiftPtr = 0;
+						cell_direction = 0;
 						break;
 					case 0x1: /* FWD: Increment the pointer (wrap at end) */
-						if ((ptr_shiftPtr += 4) >= BITS_IN_WORD) {
-							if (++ptr_wordPtr >= MAX_WORDS_GENOME)
-								ptr_wordPtr = 0;
-							ptr_shiftPtr = 0;
+						if ((cell_shiftPtr += 4) >= BITS_IN_WORD) {
+							if (++cell_wordPtr >= MAX_WORDS_GENOME)
+								cell_wordPtr = 0;
+							cell_shiftPtr = 0;
 						}
 						break;
 					case 0x2: /* BACK: Decrement the pointer (wrap at beginning) */
-						if (ptr_shiftPtr)
-							ptr_shiftPtr -= 4;
+						if (cell_shiftPtr)
+							cell_shiftPtr -= 4;
 						else {
-							if (ptr_wordPtr)
-								--ptr_wordPtr;
+							if (cell_wordPtr)
+								--cell_wordPtr;
 							else 
-								ptr_wordPtr = MAX_WORDS_GENOME - 1;
-							ptr_shiftPtr = BITS_IN_WORD - 4;
+								cell_wordPtr = MAX_WORDS_GENOME - 1;
+							cell_shiftPtr = BITS_IN_WORD - 4;
 						}
 						break;
-					case 0x3: /* INC: Increment the register */
-						reg = (reg + 1) & 0xf;
+					case 0x3: /* INC: Increment the cell_register */
+						cell_register = (cell_register + 1) & 0xf;
 						break;
-					case 0x4: /* DEC: Decrement the register */
-						reg = (reg - 1) & 0xf;
+					case 0x4: /* DEC: Decrement the cell_register */
+						cell_register = (cell_register - 1) & 0xf;
 						break;
-					case 0x5: /* READG: Read into the register from genome */
-						reg = (currCell->genome[ptr_wordPtr] >> ptr_shiftPtr) & 0xf;
+					case 0x5: /* READG: Read into the cell_register from genome */
+						cell_register = (currCell->genome[cell_wordPtr] >> cell_shiftPtr) & 0xf;
 						break;
-					case 0x6: /* WRITEG: Write out from the register to genome */
-						currCell->genome[ptr_wordPtr] &= ~(((uintptr_t)0xf) << ptr_shiftPtr);
-						currCell->genome[ptr_wordPtr] |= reg << ptr_shiftPtr;
+					case 0x6: /* WRITEG: Write out from the cell_register to genome */
+						currCell->genome[cell_wordPtr] &= ~(((uintptr_t)0xf) << cell_shiftPtr);
+						currCell->genome[cell_wordPtr] |= cell_register << cell_shiftPtr;
 						currentWord = currCell->genome[wordPtr]; /* Must refresh in case this changed! */
 						break;
-					case 0x7: /* READB: Read into the register from buffer */
-						reg = (outputBuf[ptr_wordPtr] >> ptr_shiftPtr) & 0xf;
+					case 0x7: /* READB: Read into the cell_register from buffer */
+						cell_register = (outputBuf[cell_wordPtr] >> cell_shiftPtr) & 0xf;
 						break;
-					case 0x8: /* WRITEB: Write out from the register to buffer */
-						outputBuf[ptr_wordPtr] &= ~(((uintptr_t)0xf) << ptr_shiftPtr);
-						outputBuf[ptr_wordPtr] |= reg << ptr_shiftPtr;
+					case 0x8: /* WRITEB: Write out from the cell_register to buffer */
+						outputBuf[cell_wordPtr] &= ~(((uintptr_t)0xf) << cell_shiftPtr);
+						outputBuf[cell_wordPtr] |= cell_register << cell_shiftPtr;
 						break;
-					case 0x9: /* LOOP: Jump forward to matching REP if register is zero */
-						if (reg) {
-							if (loopStackPtr >= MAX_NUM_INSTR)
+					case 0x9: /* LOOP: Jump forward to matching REP if cell_register is zero */
+						if (cell_register) {
+							if (whichLoop >= MAX_NUM_INSTR)
 								stop = 1; /* Stack overflow ends execution */
 							else {
-								loopStack_wordPtr[loopStackPtr] = wordPtr;
-								loopStack_shiftPtr[loopStackPtr] = shiftPtr;
-								++loopStackPtr;
+								loopStack_wordPtr[whichLoop] = wordPtr;
+								loopStack_shiftPtr[whichLoop] = shiftPtr;
+								++whichLoop;
 							}
 						} else falseLoopDepth = 1;
 						break;
-					case 0xa: /* REP: Jump back to matching LOOP if register is nonzero */
-						if (loopStackPtr) {
-							--loopStackPtr;
-							if (reg) {
-								wordPtr = loopStack_wordPtr[loopStackPtr];
-								shiftPtr = loopStack_shiftPtr[loopStackPtr];
+					case 0xa: /* REP: Jump back to matching LOOP if cell_register is nonzero */
+						if (whichLoop) {
+							--whichLoop;
+							if (cell_register) {
+								wordPtr = loopStack_wordPtr[whichLoop];
+								shiftPtr = loopStack_shiftPtr[whichLoop];
 								currentWord = currCell->genome[wordPtr];
 								/* This ensures that the LOOP is rerun */
 								continue;
 							}
 						}
 						break;
-					case 0xb: /* TURN: Turn in the direction specified by register */
-						facing = reg & 3;
+					case 0xb: /* TURN: Turn in the direction specified by cell_register */
+						cell_direction = cell_register & 3;
 						break;
-					case 0xc: /* XCHG: Skip next instruction and exchange value of register with it */
+					case 0xc: /* XCHG: Skip next instruction and exchange value of cell_register with it */
 						if ((shiftPtr += 4) >= BITS_IN_WORD) {
 							if (++wordPtr >= MAX_WORDS_GENOME) {
 								wordPtr = EXEC_START_WORD;
 								shiftPtr = EXEC_START_BIT;
 							} else shiftPtr = 0;
 						}
-						tmp = reg;
-						reg = (currCell->genome[wordPtr] >> shiftPtr) & 0xf;
+						tmp = cell_register;
+						cell_register = (currCell->genome[wordPtr] >> shiftPtr) & 0xf;
 						currCell->genome[wordPtr] &= ~(((uintptr_t)0xf) << shiftPtr);
 						currCell->genome[wordPtr] |= tmp << shiftPtr;
 						currentWord = currCell->genome[wordPtr];
 						break;
 					case 0xd: /* KILL: Blow away neighboring cell if allowed with penalty on failure */
-						neighborCell = getNeighbor(x,y,facing);
-						if (accessAllowed(neighborCell,reg,0)) {
+						neighborCell = getNeighbor(x,y,cell_direction);
+						if (accessAllowed(neighborCell,cell_register,0)) {
 							if (neighborCell->generation > 2)
 								++statCounters.viableCellsKilled;
 
@@ -1184,8 +1184,8 @@ int main(int argc,char **argv)
 						}
 						break;
 					case 0xe: /* SHARE: Equalize energy between self and neighbor if allowed */
-						neighborCell = getNeighbor(x,y,facing);
-						if (accessAllowed(neighborCell,reg,1)) {
+						neighborCell = getNeighbor(x,y,cell_direction);
+						if (accessAllowed(neighborCell,cell_register,1)) {
 							if (neighborCell->generation > 2)
 								++statCounters.viableCellShares;
 
@@ -1218,8 +1218,8 @@ int main(int argc,char **argv)
 		* would never be executed and then would be replaced with random
 		* junk eventually. See the seeding code in the main loop above. */
 		if ((outputBuf[0] & 0xff) != 0xff) {
-            neighborCell = getNeighbor(x,y,facing);
-			if ((neighborCell->energy)&&accessAllowed(neighborCell,reg,0)) {
+            neighborCell = getNeighbor(x,y,cell_direction);
+			if ((neighborCell->energy)&&accessAllowed(neighborCell,cell_register,0)) {
 				/* If replacing a viable cell, update relevant stats for update */
 				if (neighborCell->generation > 2)
 					++statCounters.viableCellsReplaced;
