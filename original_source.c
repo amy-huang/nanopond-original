@@ -3,7 +3,7 @@
 
 /* *********************************************************************** */
 /*                                                                         */
-/* Nanopond version 2.0 -- A teeny tiny artificial life virtual machine    */
+/* NanocellArray version 2.0 -- A teeny tiny artificial life virtual machine    */
 /* Copyright (C) 2005 Adam Ierymenko - http://www.greythumb.com/people/api */
 /* Copyright (C) 2017 Barry Rountree - rountree@llnl.gov		   */	
 /*                                                                         */
@@ -47,8 +47,8 @@
  *       turn in various directions in order to reproduce in anything but
  *       a straight line. It also makes pretty graphics.
  * 1.7 - Added more statistics, such as original lineage, and made the
- *       genome dump files CSV files as well.
- * 1.8 - Fixed LOOP/REP bug reported by user Sotek.  Thanks!  Also
+ *       genome report files CSV files as well.
+ * 1.8 - Fixed LOOP/REP bug updateed by user Sotek.  Thanks!  Also
  *       reduced the default mutation rate a bit.
  * 1.9 - Added a bunch of changes suggested by Christoph Groth: a better
  *       coloring algorithm, right click to switch coloring schemes (two
@@ -61,7 +61,7 @@
  */
 
 /*
- * Nanopond is just what it says: a very very small and simple artificial
+ * NanocellArray is just what it says: a very very small and simple artificial
  * life virtual machine.
  *
  * It is a "small evolving program" based artificial life system of the same
@@ -69,15 +69,15 @@
  * and efficient C code to make it as fast as possible, and is so small that
  * it consists of only one .c file.
  *
- * How Nanopond works:
+ * How NanocellArray works:
  *
- * The Nanopond world is called a "pond."  It is an NxM two dimensional
+ * The NanocellArray world is called a "cellArray."  It is an NxM two dimensional
  * array of Cell structures, and it wraps at the edges (it's toroidal).
  * Each Cell structure consists of a few attributes that are there for
- * statistics purposes, an energy level, and an array of POND_DEPTH
+ * statistics purposes, an energy level, and an array of MAX_NUM_INSTR
  * four-bit values.  (The four-bit values are actually stored in an array
  * of machine-size words.)  The array in each cell contains the genome
- * associated with that cell, and POND_DEPTH is therefore the maximum
+ * associated with that cell, and MAX_NUM_INSTR is therefore the maximum
  * allowable size for a cell genome.
  *
  * The first four bit value in the genome is called the "logo." What that is
@@ -93,13 +93,13 @@
  * computer can do. If you're curious, the instruciton set is based on this:
  * http://www.muppetlabs.com/~breadbox/bf/
  *
- * At the center of Nanopond is a core loop. Each time this loop executes,
+ * At the center of NanocellArray is a core loop. Each time this loop executes,
  * a clock counter is incremented and one or more things happen:
  *
- * - Every REPORT_FREQUENCY clock ticks a line of comma seperated output
+ * - Every UPDATE_FREQUENCY clock ticks a line of comma seperated output
  *   is printed to STDOUT with some statistics about what's going on.
- * - Every DUMP_FREQUENCY clock ticks, all viable replicators (cells whose
- *   generation is >= 2) are dumped to a file on disk.
+ * - Every REPORT_FREQUENCY clock ticks, all viable replicators (cells whose
+ *   generation is >= 2) are reported to a file on disk.
  * - Every INFLOW_FREQUENCY clock ticks a random x,y location is picked,
  *   energy is added (see INFLOW_RATE_MEAN and INFLOW_RATE_DEVIATION)
  *   and it's genome is filled with completely random bits.  Statistics
@@ -161,7 +161,7 @@
  * evolution by natural selection takes over. Since natural selection is
  * most certainly *not* random, things will start to get more and more
  * ordered and complex (in the functional sense). There are two commodities
- * that are scarce in the pond: space in the NxN grid and energy. Evolving
+ * that are scarce in the cellArray: space in the NxN grid and energy. Evolving
  * cells compete for access to both.
  *
  * If you want more implementation details such as the actual instruction
@@ -170,10 +170,10 @@
  * are packed into machine size words by bit shifting. Once you get that,
  * the rest is pretty simple.
  *
- * Nanopond, for it's simplicity, manifests some really interesting
+ * NanocellArray, for it's simplicity, manifests some really interesting
  * evolutionary dynamics. While I haven't run the kind of multiple-
  * month-long experiment necessary to really see this (I might!), it
- * would appear that evolution in the pond doesn't get "stuck" on just
+ * would appear that evolution in the cellArray doesn't get "stuck" on just
  * one or a few forms the way some other simulators are apt to do.
  * I think simplicity is partly reponsible for this along with what
  * biologists call embeddedness, which means that the cells are a part
@@ -181,23 +181,23 @@
  *
  * Run it for a while... the results can be... interesting!
  *
- * Running Nanopond:
+ * Running NanocellArray:
  *
- * Nanopond can use SDL2 (Simple Directmedia Layer) for screen output. If
+ * NanocellArray can use SDL2 (Simple Directmedia Layer) for screen output. If
  * you don't have SDL, comment out USE_SDL below and you'll just see text
- * statistics and get genome data dumps. (Turning off SDL will also speed
+ * statistics and get genome data reports. (Turning off SDL will also speed
  * things up slightly.)
  *
- * After looking over the tunable parameters below, compile Nanopond and
+ * After looking over the tunable parameters below, compile NanocellArray and
  * run it. Here are some example compilation commands from Linux:
  *
  * For Pentiums:
  *  gcc -O6 -march=pentium -funroll-loops -fomit-frame-pointer -s
- *   -o nanopond nanopond.c -lSDL
+ *   -o nanocellArray nanocellArray.c -lSDL
  *
  * For Athlons with gcc 4.0+:
  *  gcc -O6 -msse -mmmx -march=athlon -mtune=athlon -ftree-vectorize
- *   -funroll-loops -fomit-frame-pointer -o nanopond nanopond.c -lSDL
+ *   -funroll-loops -fomit-frame-pointer -o nanocellArray nanocellArray.c -lSDL
  *
  * The second line is for gcc 4.0 or newer and makes use of GCC's new
  * tree vectorizing feature. This will speed things up a bit by
@@ -217,11 +217,11 @@
  * #define uint16_t unsigned short
  * #define uint64_t unsigned long long (or whatever is your 64-bit int)
  *
- * When Nanopond runs, comma-seperated stats (see doReport() for
+ * When NanocellArray runs, comma-seperated stats (see doUpdate() for
  * the columns) are output to stdout and various messages are output
  * to stderr. For example, you might do:
  *
- * ./nanopond >>stats.csv 2>messages.txt &
+ * ./nanocellArray >>stats.csv 2>messages.txt &
  *
  * To get both in seperate files.
  *
@@ -242,19 +242,19 @@
 /* Time in seconds after which to stop at. Comment this out to run forever. */
 #define STOP_AT 100
 
-/* Frequency of comprehensive reports-- lower values will provide more
+/* Frequency of comprehensive updates-- lower values will provide more
  * info while slowing down the simulation. Higher values will give less
  * frequent updates. */
 /* This is also the frequency of screen refreshes if SDL is enabled. */
-#define REPORT_FREQUENCY 100000
+#define UPDATE_FREQUENCY 100000
 
-/* Frequency at which to dump all viable replicators (generation > 2)
- * to a file named <clock>.dump in the current directory.  Comment
- * out to disable. The cells are dumped in hexadecimal, which is
+/* Frequency at which to report all viable replicators (generation > 2)
+ * to a file named <clock>.report in the current directory.  Comment
+ * out to disable. The cells are reported in hexadecimal, which is
  * semi-human-readable if you look at the big switch() statement
  * in the main loop to see what instruction is signified by each
  * four-bit value. */
-#define DUMP_FREQUENCY 10000000
+#define REPORT_FREQUENCY 10000000
 
 /* Mutation rate -- range is from 0 (none) to 0xffffffff (all mutations!) */
 /* To get it from a float probability from 0.0 to 1.0, multiply it by
@@ -274,13 +274,13 @@
  * no variation in inflow rate. */
 #define INFLOW_RATE_VARIATION 8000
 
-/* Size of pond in X and Y dimensions. */
+/* Size of cellArray in X and Y dimensions. */
 #define POND_SIZE_X 640
 #define POND_SIZE_Y 480
 
-/* Depth of pond in four-bit codons -- this is the maximum
+/* Depth of cellArray in four-bit codons -- this is the maximum
  * genome size. This *must* be a multiple of 16! */
-#define POND_DEPTH 512
+#define MAX_NUM_INSTR 512
 
 /* This is the divisor that determines how much energy is taken
  * from cells when they try to KILL a viable cell neighbor and
@@ -419,13 +419,13 @@ static inline uint32_t genrand_int32() {
 /* ----------------------------------------------------------------------- */
 
 /* Pond depth in machine-size words.  This is calculated from
- * POND_DEPTH and the size of the machine word. (The multiplication
+ * MAX_NUM_INSTR and the size of the machine word. (The multiplication
  * by two is due to the fact that there are two four-bit values in
  * each eight-bit byte.) */
-#define POND_DEPTH_SYSWORDS (POND_DEPTH / (sizeof(uintptr_t) * 2))
+#define MAX_WORDS_GENOME (MAX_NUM_INSTR / (sizeof(uintptr_t) * 2))
 
 /* Number of bits in a machine-size word */
-#define SYSWORD_BITS (sizeof(uintptr_t) * 8)
+#define BITS_IN_WORD (sizeof(uintptr_t) * 8)
 
 /* Constants representing neighbors in the 2D grid. */
 #define N_LEFT 0
@@ -442,7 +442,7 @@ static inline uint32_t genrand_int32() {
 static const uintptr_t BITS_IN_FOURBIT_WORD[16] = { 0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4 };
 
 /**
- * Structure for a cell in the pond
+ * Structure for a cell in the cellArray
  */
 struct Cell {
 	uint64_t ID;			/* Globally unique cell ID */
@@ -450,10 +450,10 @@ struct Cell {
 	uint64_t lineage;		/* Equal to the cell ID of the first cell in the line. */
 	uintptr_t generation;		/* Generations start at 0 and are incremented from there. */
 	uintptr_t energy;		/* Energy level of this cell */
-	uintptr_t genome[POND_DEPTH_SYSWORDS];/* four-bit instructions packed into machine-size words */
+	uintptr_t genome[MAX_WORDS_GENOME];/* four-bit instructions packed into machine-size words */
 };
 
-struct Cell pond[POND_SIZE_X][POND_SIZE_Y];/* The pond is a 2D array of cells */
+struct Cell cellArray[POND_SIZE_X][POND_SIZE_Y];/* The cellArray is a 2D array of cells */
 
 /* Currently selected color scheme */
 enum { KINSHIP,LINEAGE,MAX_COLOR_SCHEME } colorScheme = KINSHIP;
@@ -477,22 +477,22 @@ static inline uintptr_t getRandom()
 /**
  * Structure for keeping some running tally type statistics
  */
-struct PerReportStatCounters
+struct PerUpdateStatCounters
 {
-	double instructionExecutions[16];/* Per-instruction-type execution count since last report. */
-	double cellExecutions;		/* Number of cells executed since last report */
+	double instructionExecutions[16];/* Per-instruction-type execution count since last update. */
+	double cellExecutions;		/* Number of cells executed since last update */
 	uintptr_t viableCellsReplaced;	/* Number of viable cells replaced by other cells' offspring */
 	uintptr_t viableCellsKilled;	/* Number of viable cells KILLed */
 	uintptr_t viableCellShares;	/* Number of successful SHARE operations */
 };
 
 
-struct PerReportStatCounters statCounters;	/* Global statistics counters */
+struct PerUpdateStatCounters statCounters;	/* Global statistics counters */
 
 /**
  * Output a line of comma-seperated statistics data
  */
-static void doReport(const uint64_t clock)
+static void doUpdate(const uint64_t clock)
 {
 	static uint64_t lastTotalViableReplicators = 0;
 
@@ -505,7 +505,7 @@ static void doReport(const uint64_t clock)
   
 	for(x=0;x<POND_SIZE_X;++x) {
 		for(y=0;y<POND_SIZE_Y;++y) {
-			struct Cell *const c = &pond[x][y];
+			struct Cell *const c = &cellArray[x][y];
 			if (c->energy) {
 				++totalActiveCells;
 				totalEnergy += (uint64_t)c->energy;
@@ -557,44 +557,44 @@ static void doReport(const uint64_t clock)
   
 	lastTotalViableReplicators = totalViableReplicators;
   
-	/* Reset per-report stat counters */
+	/* Reset per-update stat counters */
 	for(x=0;x<sizeof(statCounters);++x)
 		((uint8_t *)&statCounters)[x] = (uint8_t)0;
 }
 
 /**
- * Dumps all viable (generation > 2) cells to a file called <clock>.dump
+ * Reports all viable (generation > 2) cells to a file called <clock>.report
  */
-static void doDump(const uint64_t clock)
+static void doReport(const uint64_t clock)
 {
-	char buf[POND_DEPTH*2];
+	char buf[MAX_NUM_INSTR*2];
 	FILE *d;
 	uintptr_t x,y,wordPtr,shiftPtr,inst,stopCount,i;
-	struct Cell *pptr;
+	struct Cell *currCell;
   
-	sprintf(buf,"%lu.dump.csv",clock);
+	sprintf(buf,"%lu.report.csv",clock);
 	d = fopen(buf,"w");
 	if (!d) {
 		fprintf(stderr,"[WARNING] Could not open %s for writing.\n",buf);
 		return;
 	}
   
-	fprintf(stderr,"[INFO] Dumping viable cells to %s\n",buf);
+	fprintf(stderr,"[INFO] Reporting viable cells to %s\n",buf);
   
 	for(x=0;x<POND_SIZE_X;++x) {
 		for(y=0;y<POND_SIZE_Y;++y) {
-			pptr = &pond[x][y];
-			if (pptr->energy&&(pptr->generation > 2)) {
+			currCell = &cellArray[x][y];
+			if (currCell->energy&&(currCell->generation > 2)) {
 				fprintf(d,"ID: %lu, parent ID: %lu, lineage: %lu, generation: %lu\n",
-					(uint64_t)pptr->ID,
-					(uint64_t)pptr->parentID,
-					(uint64_t)pptr->lineage,
-					(uint64_t)pptr->generation);
+					(uint64_t)currCell->ID,
+					(uint64_t)currCell->parentID,
+					(uint64_t)currCell->lineage,
+					(uint64_t)currCell->generation);
 				wordPtr = 0;
 				shiftPtr = 0;
 				stopCount = 0;
-				for(i=0;i<POND_DEPTH;++i) {
-					inst = (pptr->genome[wordPtr] >> shiftPtr) & 0xf;
+				for(i=0;i<MAX_NUM_INSTR;++i) {
+					inst = (currCell->genome[wordPtr] >> shiftPtr) & 0xf;
 					/* Four STOP instructions in a row is considered the end.
 					* The probability of this being wrong is *very* small, and
 					* could only occur if you had four STOPs in a row inside
@@ -607,8 +607,8 @@ static void doDump(const uint64_t clock)
 							break;
 					} else 
 						stopCount = 0;
-					if ((shiftPtr += 4) >= SYSWORD_BITS) {
-						if (++wordPtr >= POND_DEPTH_SYSWORDS) {
+					if ((shiftPtr += 4) >= BITS_IN_WORD) {
+						if (++wordPtr >= MAX_WORDS_GENOME) {
 							wordPtr = 0;
 							shiftPtr = 4;
 						} else 
@@ -623,17 +623,17 @@ static void doDump(const uint64_t clock)
 }
 
 /**
- * Dumps the genome of a cell to a file.
+ * Reports the genome of a cell to a file.
  */
 #ifdef USE_SDL
-static void dumpCell(FILE *file, struct Cell *cell) {
+static void reportCell(FILE *file, struct Cell *cell) {
 	uintptr_t wordPtr,shiftPtr,inst,stopCount,i;
 
 	if (cell->energy&&(cell->generation > 2)) {
 		wordPtr = 0;
 		shiftPtr = 0;
 		stopCount = 0;
-		for(i=0;i<POND_DEPTH;++i) {
+		for(i=0;i<MAX_NUM_INSTR;++i) {
 			inst = (cell->genome[wordPtr] >> shiftPtr) & 0xf;
 			/* Four STOP instructions in a row is considered the end.
 			* The probability of this being wrong is *very* small, and
@@ -647,8 +647,8 @@ static void dumpCell(FILE *file, struct Cell *cell) {
 					break;
 			} else 
 				stopCount = 0;
-			if ((shiftPtr += 4) >= SYSWORD_BITS) {
-				if (++wordPtr >= POND_DEPTH_SYSWORDS) {
+			if ((shiftPtr += 4) >= BITS_IN_WORD) {
+				if (++wordPtr >= MAX_WORDS_GENOME) {
 					wordPtr = EXEC_START_WORD;
 					shiftPtr = EXEC_START_BIT;
 				} else 
@@ -661,18 +661,18 @@ static void dumpCell(FILE *file, struct Cell *cell) {
 #endif
 
 /**
- * Get a neighbor in the pond
+ * Get a neighbor in the cellArray
  */
 static inline struct Cell *getNeighbor(const uintptr_t x,const uintptr_t y,const uintptr_t dir)
 {
 	/* Space is toroidal; it wraps at edges */
 	switch(dir) {
-		case N_LEFT: 	return (x) ? &pond[x-1][y] : &pond[POND_SIZE_X-1][y];
-		case N_RIGHT: 	return (x < (POND_SIZE_X-1)) ? &pond[x+1][y] : &pond[0][y];
-		case N_UP: 	return (y) ? &pond[x][y-1] : &pond[x][POND_SIZE_Y-1];
-		case N_DOWN: 	return (y < (POND_SIZE_Y-1)) ? &pond[x][y+1] : &pond[x][0];
+		case N_LEFT: 	return (x) ? &cellArray[x-1][y] : &cellArray[POND_SIZE_X-1][y];
+		case N_RIGHT: 	return (x < (POND_SIZE_X-1)) ? &cellArray[x+1][y] : &cellArray[0][y];
+		case N_UP: 	return (y) ? &cellArray[x][y-1] : &cellArray[x][POND_SIZE_Y-1];
+		case N_DOWN: 	return (y < (POND_SIZE_Y-1)) ? &cellArray[x][y+1] : &cellArray[x][0];
 	}
-	return &pond[x][y]; /* This should never be reached */
+	return &cellArray[x][y]; /* This should never be reached */
 }
 
 /**
@@ -715,10 +715,10 @@ static inline uint32_t getColor(struct Cell *c)
 					sum = 0;
 					skipnext = 0;
 					for(i=0;
-					i<POND_DEPTH_SYSWORDS&&(c->genome[i] != ~((uintptr_t)0));
+					i<MAX_WORDS_GENOME&&(c->genome[i] != ~((uintptr_t)0));
 					++i) {
 						word = c->genome[i];
-						for(j=0;j<SYSWORD_BITS/4;++j,word >>= 4) {
+						for(j=0;j<BITS_IN_WORD/4;++j,word >>= 4) {
 					/* We ignore 0xf's here, because otherwise very similar genomes
 					* might get quite different hash values in the case when one of
 					* the genomes is slightly longer and uses one more maschine
@@ -799,7 +799,7 @@ static void Initialize_SDL2(){
                 exit(-1);
         }
 
-	SDL_SetWindowTitle(sdlWindow, "Nanopond"); 
+	SDL_SetWindowTitle(sdlWindow, "NanocellArray"); 
 
         // Create a texture.
         sdlTexture = SDL_CreateTexture(
@@ -833,7 +833,7 @@ static void RedrawScreen(){
 	for (y=0;y<POND_SIZE_Y;++y) {
 		dst = (Uint32*)((Uint8*)myPixels + y * sdlPitch);
 		for (x=0;x<POND_SIZE_X;++x)
-			*dst++ = getColor(&pond[x][y]);
+			*dst++ = getColor(&cellArray[x][y]);
 	}
 
 	SDL_UnlockTexture( sdlTexture );
@@ -874,29 +874,29 @@ int main(int argc,char **argv)
 	uintptr_t i,x,y;
   
 	/* Buffer used for execution output of candidate offspring */
-	uintptr_t outputBuf[POND_DEPTH_SYSWORDS];
+	uintptr_t outputBuf[MAX_WORDS_GENOME];
   
 	/* Seed and init the random number generator */
 	init_genrand(1234567890);
 	for(i=0;i<1024;++i)
 		getRandom();
 
-	/* Reset per-report stat counters */
+	/* Reset per-update stat counters */
 	for(x=0;x<sizeof(statCounters);++x)
 		((uint8_t *)&statCounters)[x] = (uint8_t)0;
   
  
-	/* Clear the pond and initialize all genomes
+	/* Clear the cellArray and initialize all genomes
 	* to 0xffff... */
 	for(x=0;x<POND_SIZE_X;++x) {
 		for(y=0;y<POND_SIZE_Y;++y) {
-			pond[x][y].ID = 0;
-			pond[x][y].parentID = 0;
-			pond[x][y].lineage = 0;
-			pond[x][y].generation = 0;
-			pond[x][y].energy = 0;
-			for(i=0;i<POND_DEPTH_SYSWORDS;++i)
-				pond[x][y].genome[i] = ~((uintptr_t)0);
+			cellArray[x][y].ID = 0;
+			cellArray[x][y].parentID = 0;
+			cellArray[x][y].lineage = 0;
+			cellArray[x][y].generation = 0;
+			cellArray[x][y].energy = 0;
+			for(i=0;i<MAX_WORDS_GENOME;++i)
+				cellArray[x][y].genome[i] = ~((uintptr_t)0);
 		}
 	}
   
@@ -905,7 +905,7 @@ int main(int argc,char **argv)
 	uint64_t cellIdCounter = 0;	/* This is used to generate unique cell IDs */
   
 	uintptr_t currentWord,wordPtr,shiftPtr,inst,tmp;/* Miscellaneous variables */
-	struct Cell *pptr,*tmpptr;			/* used in the loop */
+	struct Cell *currCell,*neighborCell;			/* used in the loop */
   
 	uintptr_t ptr_wordPtr;	/* Virtual machine memory pointer register (which */
 	uintptr_t ptr_shiftPtr; /* exists in two parts... read the code below...) */
@@ -914,8 +914,8 @@ int main(int argc,char **argv)
 	uintptr_t facing;		/* Which way is the cell facing? */
   
   
-	uintptr_t loopStack_wordPtr[POND_DEPTH];	/*				  */
-	uintptr_t loopStack_shiftPtr[POND_DEPTH];	/* Virtual machine loop/rep stack */
+	uintptr_t loopStack_wordPtr[MAX_NUM_INSTR];	/*				  */
+	uintptr_t loopStack_shiftPtr[MAX_NUM_INSTR];	/* Virtual machine loop/rep stack */
 	uintptr_t loopStackPtr;				/* 				  */
   
 	uintptr_t falseLoopDepth; 		/* If this is nonzero, we're skipping to matching REP */
@@ -944,12 +944,12 @@ int main(int argc,char **argv)
 		//}
 #endif /* STOP_AT */
 
-		/* Increment clock and run reports periodically */
+		/* Increment clock and run updates periodically */
 		/* Clock is incremented at the start, so it starts at 1 */
-		if (!(++clock % REPORT_FREQUENCY)) {
-			doReport(clock);
+		if (!(++clock % UPDATE_FREQUENCY)) {
+			doUpdate(clock);
 #ifdef USE_SDL
-			/* SDL display is also refreshed every REPORT_FREQUENCY */
+			/* SDL display is also refreshed every UPDATE_FREQUENCY */
 			while (SDL_PollEvent(&sdlEvent)) {
 				if (sdlEvent.type == SDL_QUIT) {
 					fprintf(stderr,"[QUIT] Quit signal received!\n");
@@ -959,7 +959,7 @@ int main(int argc,char **argv)
 						switch (sdlEvent.button.button) {
 							case SDL_BUTTON_LEFT:
 								fprintf(stderr,"[INTERFACE] Genome of cell at (%d, %d):\n",sdlEvent.button.x, sdlEvent.button.y);
-								dumpCell(stderr, &pond[sdlEvent.button.x][sdlEvent.button.y]);
+								reportCell(stderr, &cellArray[sdlEvent.button.x][sdlEvent.button.y]);
 								break;
 							case SDL_BUTTON_RIGHT:
 								colorScheme = (colorScheme + 1) % MAX_COLOR_SCHEME;
@@ -976,11 +976,11 @@ int main(int argc,char **argv)
 #endif /* USE_SDL<*/
 		}
 
-#ifdef DUMP_FREQUENCY
-		/* Periodically dump the viable population if defined */
-		if (!(clock % DUMP_FREQUENCY))
-			doDump(clock);
-#endif /* DUMP_FREQUENCY */
+#ifdef REPORT_FREQUENCY
+		/* Periodically report the viable population if defined */
+		if (!(clock % REPORT_FREQUENCY))
+			doReport(clock);
+#endif /* REPORT_FREQUENCY */
 
 		/* Introduce a random cell somewhere with a given energy level */
 		/* This is called seeding, and introduces both energy and
@@ -989,18 +989,18 @@ int main(int argc,char **argv)
 		if (!(clock % INFLOW_FREQUENCY)) {
 			x = getRandom() % POND_SIZE_X;
 			y = getRandom() % POND_SIZE_Y;
-			pptr = &pond[x][y];
-			pptr->ID = cellIdCounter;
-			pptr->parentID = 0;
-			pptr->lineage = cellIdCounter;
-			pptr->generation = 0;
+			currCell = &cellArray[x][y];
+			currCell->ID = cellIdCounter;
+			currCell->parentID = 0;
+			currCell->lineage = cellIdCounter;
+			currCell->generation = 0;
 #ifdef INFLOW_RATE_VARIATION
-			pptr->energy += INFLOW_RATE_BASE + (getRandom() % INFLOW_RATE_VARIATION);
+			currCell->energy += INFLOW_RATE_BASE + (getRandom() % INFLOW_RATE_VARIATION);
 #else
-			pptr->energy += INFLOW_RATE_BASE;
+			currCell->energy += INFLOW_RATE_BASE;
 #endif /* INFLOW_RATE_VARIATION */
-			for(i=0;i<POND_DEPTH_SYSWORDS;++i) 
-				pptr->genome[i] = getRandom();
+			for(i=0;i<MAX_WORDS_GENOME;++i) 
+				currCell->genome[i] = getRandom();
 			++cellIdCounter;
       
       /* Update the random cell on SDL screen if viz is enabled */
@@ -1008,7 +1008,7 @@ int main(int argc,char **argv)
 			//FIXME
 			if (SDL_MUSTLOCK(screen))
 				SDL_LockSurface(screen);
-			((uint8_t *)screen->pixels)[x + (y * sdlPitch)] = getColor(pptr);
+			((uint8_t *)screen->pixels)[x + (y * sdlPitch)] = getColor(currCell);
 			if (SDL_MUSTLOCK(screen))
 				SDL_UnlockSurface(screen);
 #endif /* USE_SDL */
@@ -1017,10 +1017,10 @@ int main(int argc,char **argv)
 		/* Pick a random cell to execute */
 		x = getRandom() % POND_SIZE_X;
 		y = getRandom() % POND_SIZE_Y;
-		pptr = &pond[x][y];
+		currCell = &cellArray[x][y];
 
 		/* Reset the state of the VM prior to execution */
-		for(i=0;i<POND_DEPTH_SYSWORDS;++i)
+		for(i=0;i<MAX_WORDS_GENOME;++i)
 			outputBuf[i] = ~((uintptr_t)0); /* ~0 == 0xfffff... */
 		ptr_wordPtr = 0;
 		ptr_shiftPtr = 0;
@@ -1038,13 +1038,13 @@ int main(int argc,char **argv)
 		* inner loop. We have to be careful to refresh this
 		* whenever it might have changed... take a look at
 		* the code. :) */
-		currentWord = pptr->genome[0];
+		currentWord = currCell->genome[0];
     
 		/* Keep track of how many cells have been executed */
 		statCounters.cellExecutions += 1.0;
 
 		/* Core execution loop */
-		while (pptr->energy&&(!stop)) {
+		while (currCell->energy&&(!stop)) {
 			/* Get the next instruction */
 			inst = (currentWord >> shiftPtr) & 0xf;
       
@@ -1063,7 +1063,7 @@ int main(int argc,char **argv)
 			}
       
 			/* Each instruction processed costs one unit of energy */
-			--pptr->energy;
+			--currCell->energy;
       
 			/* Execute the instruction */
 			if (falseLoopDepth) {
@@ -1087,8 +1087,8 @@ int main(int argc,char **argv)
 						facing = 0;
 						break;
 					case 0x1: /* FWD: Increment the pointer (wrap at end) */
-						if ((ptr_shiftPtr += 4) >= SYSWORD_BITS) {
-							if (++ptr_wordPtr >= POND_DEPTH_SYSWORDS)
+						if ((ptr_shiftPtr += 4) >= BITS_IN_WORD) {
+							if (++ptr_wordPtr >= MAX_WORDS_GENOME)
 								ptr_wordPtr = 0;
 							ptr_shiftPtr = 0;
 						}
@@ -1100,8 +1100,8 @@ int main(int argc,char **argv)
 							if (ptr_wordPtr)
 								--ptr_wordPtr;
 							else 
-								ptr_wordPtr = POND_DEPTH_SYSWORDS - 1;
-							ptr_shiftPtr = SYSWORD_BITS - 4;
+								ptr_wordPtr = MAX_WORDS_GENOME - 1;
+							ptr_shiftPtr = BITS_IN_WORD - 4;
 						}
 						break;
 					case 0x3: /* INC: Increment the register */
@@ -1111,12 +1111,12 @@ int main(int argc,char **argv)
 						reg = (reg - 1) & 0xf;
 						break;
 					case 0x5: /* READG: Read into the register from genome */
-						reg = (pptr->genome[ptr_wordPtr] >> ptr_shiftPtr) & 0xf;
+						reg = (currCell->genome[ptr_wordPtr] >> ptr_shiftPtr) & 0xf;
 						break;
 					case 0x6: /* WRITEG: Write out from the register to genome */
-						pptr->genome[ptr_wordPtr] &= ~(((uintptr_t)0xf) << ptr_shiftPtr);
-						pptr->genome[ptr_wordPtr] |= reg << ptr_shiftPtr;
-						currentWord = pptr->genome[wordPtr]; /* Must refresh in case this changed! */
+						currCell->genome[ptr_wordPtr] &= ~(((uintptr_t)0xf) << ptr_shiftPtr);
+						currCell->genome[ptr_wordPtr] |= reg << ptr_shiftPtr;
+						currentWord = currCell->genome[wordPtr]; /* Must refresh in case this changed! */
 						break;
 					case 0x7: /* READB: Read into the register from buffer */
 						reg = (outputBuf[ptr_wordPtr] >> ptr_shiftPtr) & 0xf;
@@ -1127,7 +1127,7 @@ int main(int argc,char **argv)
 						break;
 					case 0x9: /* LOOP: Jump forward to matching REP if register is zero */
 						if (reg) {
-							if (loopStackPtr >= POND_DEPTH)
+							if (loopStackPtr >= MAX_NUM_INSTR)
 								stop = 1; /* Stack overflow ends execution */
 							else {
 								loopStack_wordPtr[loopStackPtr] = wordPtr;
@@ -1142,7 +1142,7 @@ int main(int argc,char **argv)
 							if (reg) {
 								wordPtr = loopStack_wordPtr[loopStackPtr];
 								shiftPtr = loopStack_shiftPtr[loopStackPtr];
-								currentWord = pptr->genome[wordPtr];
+								currentWord = currCell->genome[wordPtr];
 								/* This ensures that the LOOP is rerun */
 								continue;
 							}
@@ -1152,51 +1152,51 @@ int main(int argc,char **argv)
 						facing = reg & 3;
 						break;
 					case 0xc: /* XCHG: Skip next instruction and exchange value of register with it */
-						if ((shiftPtr += 4) >= SYSWORD_BITS) {
-							if (++wordPtr >= POND_DEPTH_SYSWORDS) {
+						if ((shiftPtr += 4) >= BITS_IN_WORD) {
+							if (++wordPtr >= MAX_WORDS_GENOME) {
 								wordPtr = EXEC_START_WORD;
 								shiftPtr = EXEC_START_BIT;
 							} else shiftPtr = 0;
 						}
 						tmp = reg;
-						reg = (pptr->genome[wordPtr] >> shiftPtr) & 0xf;
-						pptr->genome[wordPtr] &= ~(((uintptr_t)0xf) << shiftPtr);
-						pptr->genome[wordPtr] |= tmp << shiftPtr;
-						currentWord = pptr->genome[wordPtr];
+						reg = (currCell->genome[wordPtr] >> shiftPtr) & 0xf;
+						currCell->genome[wordPtr] &= ~(((uintptr_t)0xf) << shiftPtr);
+						currCell->genome[wordPtr] |= tmp << shiftPtr;
+						currentWord = currCell->genome[wordPtr];
 						break;
 					case 0xd: /* KILL: Blow away neighboring cell if allowed with penalty on failure */
-						tmpptr = getNeighbor(x,y,facing);
-						if (accessAllowed(tmpptr,reg,0)) {
-							if (tmpptr->generation > 2)
+						neighborCell = getNeighbor(x,y,facing);
+						if (accessAllowed(neighborCell,reg,0)) {
+							if (neighborCell->generation > 2)
 								++statCounters.viableCellsKilled;
 
 							/* Filling first two words with 0xfffff... is enough */
-							tmpptr->genome[0] = ~((uintptr_t)0);
-							tmpptr->genome[1] = ~((uintptr_t)0);
-							tmpptr->ID = cellIdCounter;
-							tmpptr->parentID = 0;
-							tmpptr->lineage = cellIdCounter;
-							tmpptr->generation = 0;
+							neighborCell->genome[0] = ~((uintptr_t)0);
+							neighborCell->genome[1] = ~((uintptr_t)0);
+							neighborCell->ID = cellIdCounter;
+							neighborCell->parentID = 0;
+							neighborCell->lineage = cellIdCounter;
+							neighborCell->generation = 0;
 							++cellIdCounter;
 						} else {
-							if (tmpptr->generation > 2) {
-								tmp = pptr->energy / FAILED_KILL_PENALTY;
-								if (pptr->energy > tmp)
-									pptr->energy -= tmp;
+							if (neighborCell->generation > 2) {
+								tmp = currCell->energy / FAILED_KILL_PENALTY;
+								if (currCell->energy > tmp)
+									currCell->energy -= tmp;
 								else 
-									pptr->energy = 0;
+									currCell->energy = 0;
 							}
 						}
 						break;
 					case 0xe: /* SHARE: Equalize energy between self and neighbor if allowed */
-						tmpptr = getNeighbor(x,y,facing);
-						if (accessAllowed(tmpptr,reg,1)) {
-							if (tmpptr->generation > 2)
+						neighborCell = getNeighbor(x,y,facing);
+						if (accessAllowed(neighborCell,reg,1)) {
+							if (neighborCell->generation > 2)
 								++statCounters.viableCellShares;
 
-							tmp = pptr->energy + tmpptr->energy;
-							tmpptr->energy = tmp / 2;
-							pptr->energy = tmp - tmpptr->energy;
+							tmp = currCell->energy + neighborCell->energy;
+							neighborCell->energy = tmp / 2;
+							currCell->energy = tmp - neighborCell->energy;
 						}
 						break;
 					case 0xf: /* STOP: End execution */
@@ -1207,14 +1207,14 @@ int main(int argc,char **argv)
 
 			/* Advance the shift and word pointers, and loop around
 			* to the beginning at the end of the genome. */
-			if ((shiftPtr += 4) >= SYSWORD_BITS) {
-				if (++wordPtr >= POND_DEPTH_SYSWORDS) {
+			if ((shiftPtr += 4) >= BITS_IN_WORD) {
+				if (++wordPtr >= MAX_WORDS_GENOME) {
 					wordPtr = EXEC_START_WORD;
 					shiftPtr = EXEC_START_BIT;
 				} else {
 					shiftPtr = 0;
 				}
-				currentWord = pptr->genome[wordPtr];
+				currentWord = currCell->genome[wordPtr];
 			}
 		} //end core execution loop
     
@@ -1223,48 +1223,48 @@ int main(int argc,char **argv)
 		* would never be executed and then would be replaced with random
 		* junk eventually. See the seeding code in the main loop above. */
 		if ((outputBuf[0] & 0xff) != 0xff) {
-            tmpptr = getNeighbor(x,y,facing);
-			if ((tmpptr->energy)&&accessAllowed(tmpptr,reg,0)) {
-				/* If replacing a viable cell, update relevant stats for report */
-				if (tmpptr->generation > 2)
+            neighborCell = getNeighbor(x,y,facing);
+			if ((neighborCell->energy)&&accessAllowed(neighborCell,reg,0)) {
+				/* If replacing a viable cell, update relevant stats for update */
+				if (neighborCell->generation > 2)
 					++statCounters.viableCellsReplaced;
                 
                 // Generate new cell ID and set parent ID, lineage, generation accordingly
-				tmpptr->ID = ++cellIdCounter;
-				tmpptr->parentID = pptr->ID;
-				tmpptr->lineage = pptr->lineage; /* Lineage is copied in offspring */
-				tmpptr->generation = pptr->generation + 1;
+				neighborCell->ID = ++cellIdCounter;
+				neighborCell->parentID = currCell->ID;
+				neighborCell->lineage = currCell->lineage; /* Lineage is copied in offspring */
+				neighborCell->generation = currCell->generation + 1;
                 // outputBuf becomes the new cell's genome
-				for(i=0;i<POND_DEPTH_SYSWORDS;++i)
-					tmpptr->genome[i] = outputBuf[i];
+				for(i=0;i<MAX_WORDS_GENOME;++i)
+					neighborCell->genome[i] = outputBuf[i];
 			}
 		}
 
-		/* Update the pond on SDL screen to show any changes since last instruction. */
+		/* Update the cellArray on SDL screen to show any changes since last instruction. */
 #ifdef USE_SDL_NOTYET
 		//FIXME
 		if (SDL_MUSTLOCK(screen))
 			SDL_LockSurface(screen);
-		((uint8_t *)screen->pixels)[x + (y * sdlPitch)] = getColor(pptr);
+		((uint8_t *)screen->pixels)[x + (y * sdlPitch)] = getColor(currCell);
 		if (x) {
-			((uint8_t *)screen->pixels)[(x-1) + (y * sdlPitch)] = getColor(&pond[x-1][y]);
+			((uint8_t *)screen->pixels)[(x-1) + (y * sdlPitch)] = getColor(&cellArray[x-1][y]);
 			if (x < (POND_SIZE_X-1))
-				((uint8_t *)screen->pixels)[(x+1) + (y * sdlPitch)] = getColor(&pond[x+1][y]);
+				((uint8_t *)screen->pixels)[(x+1) + (y * sdlPitch)] = getColor(&cellArray[x+1][y]);
 			else 
-				((uint8_t *)screen->pixels)[y * sdlPitch] = getColor(&pond[0][y]);
+				((uint8_t *)screen->pixels)[y * sdlPitch] = getColor(&cellArray[0][y]);
 		} else {
-			((uint8_t *)screen->pixels)[(POND_SIZE_X-1) + (y * sdlPitch)] = getColor(&pond[POND_SIZE_X-1][y]);
-			((uint8_t *)screen->pixels)[1 + (y * sdlPitch)] = getColor(&pond[1][y]);
+			((uint8_t *)screen->pixels)[(POND_SIZE_X-1) + (y * sdlPitch)] = getColor(&cellArray[POND_SIZE_X-1][y]);
+			((uint8_t *)screen->pixels)[1 + (y * sdlPitch)] = getColor(&cellArray[1][y]);
 		}
 		if (y) {
-			((uint8_t *)screen->pixels)[x + ((y-1) * sdlPitch)] = getColor(&pond[x][y-1]);
+			((uint8_t *)screen->pixels)[x + ((y-1) * sdlPitch)] = getColor(&cellArray[x][y-1]);
 			if (y < (POND_SIZE_Y-1))
-				((uint8_t *)screen->pixels)[x + ((y+1) * sdlPitch)] = getColor(&pond[x][y+1]);
+				((uint8_t *)screen->pixels)[x + ((y+1) * sdlPitch)] = getColor(&cellArray[x][y+1]);
 			else 
-				((uint8_t *)screen->pixels)[x] = getColor(&pond[x][0]);
+				((uint8_t *)screen->pixels)[x] = getColor(&cellArray[x][0]);
 		} else {
-			((uint8_t *)screen->pixels)[x + ((POND_SIZE_Y-1) * sdlPitch)] = getColor(&pond[x][POND_SIZE_Y-1]);
-			((uint8_t *)screen->pixels)[x + sdlPitch] = getColor(&pond[x][1]);
+			((uint8_t *)screen->pixels)[x + ((POND_SIZE_Y-1) * sdlPitch)] = getColor(&cellArray[x][POND_SIZE_Y-1]);
+			((uint8_t *)screen->pixels)[x + sdlPitch] = getColor(&cellArray[x][1]);
 		}
 		if (SDL_MUSTLOCK(screen))
 			SDL_UnlockSurface(screen);
