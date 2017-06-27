@@ -856,11 +856,6 @@ static void timeHandler(struct itimerval tval) {
  */
 int main(int argc,char **argv)
 {
-	/*	
-    int start_time;
-    start_time = time(NULL);
-    printf("start time is: %d", start_time);
-	*/
 
 #ifdef STOP_AT
 	struct itimerval tvalStop;
@@ -1270,13 +1265,6 @@ int main(int argc,char **argv)
 			SDL_UnlockSurface(screen);
 #endif /* USE_SDL */
 
-
-    /* Checks if the time limit is up, then stops program when it is 
-    if (time(NULL) >= start_time + time_limit) {
-        printf("Time is up.\n");
-        exit(0);
-    }                
-    */
 
 	} // end infinite for loop (core execution loop carrying out instructions)
   
