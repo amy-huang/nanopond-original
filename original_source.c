@@ -240,7 +240,7 @@
 /* ----------------------------------------------------------------------- */
 
 /* Time in seconds after which to stop at. Comment this out to run forever. */
-#define STOP_AFTER 100
+#define STOP_AT 100
 
 /* Frequency of comprehensive reports-- lower values will provide more
  * info while slowing down the simulation. Higher values will give less
@@ -301,6 +301,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <signal.h>
 #ifdef USE_SDL
 #include <SDL.h>
 #endif /* USE_SDL */
@@ -842,16 +843,32 @@ static void RedrawScreen(){
 }
 
 #endif
+
+static void timeHandler(struct itimerval tval) {
+#ifdef STOP_AT
+	printf("\n Time is up. %d seconds have passed.\n", STOP_AT);
+#endif
+	exit(0);
+}
+
 /**
  * Main method
  */
 int main(int argc,char **argv)
 {
-    /* Initializing and printing start time */
+	/*	
     int start_time;
     start_time = time(NULL);
     printf("start time is: %d", start_time);
+	*/
 
+#ifdef STOP_AT
+	struct itimerval tvalStop;
+	tvalStop.it_value.tv_sec = STOP_AT;
+
+	(void) signal(SIGALRM, timeHandler);
+	(void) setitimer(ITIMER_REAL, &tvalStop, NULL);
+#endif
 
 
 	uintptr_t i,x,y;
@@ -920,12 +937,12 @@ int main(int argc,char **argv)
 	for(;;) {
 
  
-#ifdef STOP_AFTER
-		if (time(NULL) - start_time >= STOP_AFTER) {		/* Stop at STOP_AFTER seconds if defined */
-			fprintf(stderr,"[QUIT] STOP_AFTER value of %d seconds reached\n", STOP_AFTER);
-			break;
-		}
-#endif /* STOP_AFTER */
+#ifdef STOP_AT
+		//if (time(NULL) - start_time >= STOP_AT) {		/* Stop at STOP_AT seconds if defined */
+		//	fprintf(stderr,"[QUIT] STOP_AT value of %d seconds reached\n", STOP_AT);
+		//	break;
+		//}
+#endif /* STOP_AT */
 
 		/* Increment clock and run reports periodically */
 		/* Clock is incremented at the start, so it starts at 1 */
